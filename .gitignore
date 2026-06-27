@@ -1,5 +1,35 @@
+@'
+# Dependencies
 node_modules
-# Keep environment variables out of version control
-.env
 
+# Environment variables - never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist
+build
+
+# Prisma generated client
 /src/generated/prisma
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Testing
+coverage
+
+# Render/deployment
+.render
+'@ | Set-Content .gitignore
