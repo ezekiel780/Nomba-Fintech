@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  password      String
+  isVerified    Boolean   @default(false)
+  refreshToken  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  vendors       Vendor[]
+  payouts       Payout[]
+  otps          Otp[]
+
+  @@map("users")
+}
+
+model Vendor {
+  id                  String    @id @default(uuid())
+  name                String
+  email               String
+  bankCode            String
+  accountNumber       String
+  resolvedAccountName String
+  accountRef          String    @unique
+  subAccountId        String?
+  virtualAccountNo    String?
+  virtualBankName     String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
+
+  transactions        Transaction[]
+  payouts             Payout[]
+  checkoutSessions     CheckoutSession[]
+
+  @@map("vendors")
+}
+
+model CheckoutSession {
+  id              String    @id @default(uuid())
+  orderReference  String    @unique
+  amount          Int
+  currency        String    @default("NGN")
+  status          String    @default("pending")
+  checkoutLink    String?
+  customerEmail   String
+  customerId      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  vendorId        String
+  vendor          Vendor    @relation(fields: [vendorId], references: [id])
+
+  @@map("checkout_sessions")
+}
+
+model Transaction {
+  id              String    @id @default(uuid())
+  merchantTxRef   String    @unique
+  amount          Int
+  amountExpected  Int?
+  currency        String    @default("NGN")
+  status          String    @default("pending")
+  type            String
+  narration       String?
+  customerEmail   String?
+  customerId      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  vendorId        String?
+  vendor          Vendor?   @relation(fields: [vendorId], references: [id])
+
+  @@map("transactions")
+}
+
+model WebhookEvent {
+  id          String    @id @default(uuid())
+  requestId   String    @unique
+  eventType   String
+  payload     Json
+  processedAt DateTime  @default(now())
+
+  @@map("webhook_events")
+}
+
+model Payout {
+  id              String    @id @default(uuid())
+  merchantTxRef   String    @unique
+  amount          Int
+  status          String    @default("pending")
+  narration       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  vendorId        String
+  vendor          Vendor    @relation(fields: [vendorId], references: [id])
+
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@map("payouts")
+}
+
+model Otp {
+  id        String    @id @default(uuid())
+  code      String
+  type      String
+  used      Boolean   @default(false)
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("otps")
+}
