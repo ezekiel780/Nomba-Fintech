@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+﻿import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 
@@ -82,6 +82,15 @@ export class NombaService implements OnModuleInit {
   async getBankCodes() {
     const headers = await this.authHeaders();
     const res = await this.http.get('/transfers/banks', { headers });
+    return res.data.data;
+  }
+
+  async verifyTransactionByOrderReference(orderReference: string) {
+    const headers = await this.authHeaders();
+    const res = await this.http.get('/transactions/accounts/single', {
+      headers,
+      params: { orderReference },
+    });
     return res.data.data;
   }
 

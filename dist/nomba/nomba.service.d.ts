@@ -11,6 +11,7 @@ export declare class NombaService implements OnModuleInit {
     getAccessToken(): Promise<string>;
     private authHeaders;
     getBankCodes(): Promise<any>;
+    verifyTransactionByOrderReference(orderReference: string): Promise<any>;
     createSubAccount(accountName: string, accountRef: string): Promise<any>;
     getSubAccountBalance(subAccountId: string): Promise<any>;
     createVirtualAccount(payload: {

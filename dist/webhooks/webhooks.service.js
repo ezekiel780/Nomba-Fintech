@@ -15,12 +15,14 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../prisma/prisma.service");
 const redis_service_1 = require("../redis/redis.service");
+const nomba_service_1 = require("../nomba/nomba.service");
 const crypto = require("crypto");
 let WebhooksService = WebhooksService_1 = class WebhooksService {
-    constructor(config, prisma, redis) {
+    constructor(config, prisma, redis, nomba) {
         this.config = config;
         this.prisma = prisma;
         this.redis = redis;
+        this.nomba = nomba;
         this.logger = new common_1.Logger(WebhooksService_1.name);
     }
     verifySignature(event, signature, timestamp) {
@@ -114,8 +116,18 @@ let WebhooksService = WebhooksService_1 = class WebhooksService {
             where: { orderReference },
         });
         if (!session) {
-            this.logger.warn('No checkout session found for orderReference: ' + orderReference);
+            this.logger.warn('No checkout session found for reference: ' + orderReference);
             return;
+        }
+        try {
+            const verified = await this.nomba.verifyTransactionByOrderReference(orderReference);
+            if (!verified || verified.status !== 'SUCCESS') {
+                this.logger.warn('Server-side verification failed for: ' + orderReference);
+                return;
+            }
+        }
+        catch (err) {
+            this.logger.warn('Could not verify transaction server-side for ' + orderReference + ': ' + err.message + '. Proceeding on webhook signature alone.');
         }
         await this.prisma.checkoutSession.update({
             where: { orderReference },
@@ -133,16 +145,13 @@ let WebhooksService = WebhooksService_1 = class WebhooksService {
                 vendorId: session.vendorId,
             },
         });
-        this.logger.log('Payment success recorded for order: ' + orderReference);
+        this.logger.log('Payment success verified and recorded for order: ' + orderReference);
     }
     async handleVirtualAccountFunded(event) {
         const data = event.data;
         const received = data?.transaction?.transactionAmount;
         const accountRef = data?.transaction?.aliasAccountReference;
-        this.logger.log('Virtual account funded: ' + accountRef);
-        const vendor = await this.prisma.vendor.findUnique({
-            where: { accountRef },
-        });
+        const vendor = await this.prisma.vendor.findUnique({ where: { accountRef } });
         if (!vendor) {
             this.logger.warn('No vendor found for accountRef: ' + accountRef);
             return;
@@ -161,22 +170,14 @@ let WebhooksService = WebhooksService_1 = class WebhooksService {
         this.logger.log('Transaction recorded for vendor: ' + vendor.name);
     }
     async handleTransferSuccess(event) {
-        const data = event.data;
-        const merchantTxRef = data?.merchantTxRef || data?.transaction?.transactionId;
+        const merchantTxRef = event.data?.merchantTxRef || event.data?.transaction?.transactionId;
+        await this.prisma.payout.updateMany({ where: { merchantTxRef }, data: { status: 'success' } });
         this.logger.log('Transfer success: ' + merchantTxRef);
-        await this.prisma.payout.updateMany({
-            where: { merchantTxRef },
-            data: { status: 'success' },
-        });
     }
     async handleTransferFailed(event) {
-        const data = event.data;
-        const merchantTxRef = data?.merchantTxRef || data?.transaction?.transactionId;
+        const merchantTxRef = event.data?.merchantTxRef || event.data?.transaction?.transactionId;
+        await this.prisma.payout.updateMany({ where: { merchantTxRef }, data: { status: 'failed' } });
         this.logger.warn('Transfer failed: ' + merchantTxRef);
-        await this.prisma.payout.updateMany({
-            where: { merchantTxRef },
-            data: { status: 'failed' },
-        });
     }
 };
 exports.WebhooksService = WebhooksService;
@@ -184,6 +185,7 @@ exports.WebhooksService = WebhooksService = WebhooksService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [config_1.ConfigService,
         prisma_service_1.PrismaService,
-        redis_service_1.RedisService])
+        redis_service_1.RedisService,
+        nomba_service_1.NombaService])
 ], WebhooksService);
 //# sourceMappingURL=webhooks.service.js.map

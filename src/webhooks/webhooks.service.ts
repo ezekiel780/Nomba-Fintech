@@ -2,6 +2,7 @@
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { NombaService } from '../nomba/nomba.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class WebhooksService {
     private config: ConfigService,
     private prisma: PrismaService,
     private redis: RedisService,
+    private nomba: NombaService,
   ) {}
 
   verifySignature(event: any, signature: string, timestamp: string): boolean {
@@ -118,8 +120,18 @@ export class WebhooksService {
     });
 
     if (!session) {
-      this.logger.warn('No checkout session found for orderReference: ' + orderReference);
+      this.logger.warn('No checkout session found for reference: ' + orderReference);
       return;
+    }
+
+    try {
+      const verified = await this.nomba.verifyTransactionByOrderReference(orderReference);
+      if (!verified || verified.status !== 'SUCCESS') {
+        this.logger.warn('Server-side verification failed for: ' + orderReference);
+        return;
+      }
+    } catch (err: any) {
+      this.logger.warn('Could not verify transaction server-side for ' + orderReference + ': ' + err.message + '. Proceeding on webhook signature alone.');
     }
 
     await this.prisma.checkoutSession.update({
@@ -140,7 +152,7 @@ export class WebhooksService {
       },
     });
 
-    this.logger.log('Payment success recorded for order: ' + orderReference);
+    this.logger.log('Payment success verified and recorded for order: ' + orderReference);
   }
 
   private async handleVirtualAccountFunded(event: any) {
@@ -148,12 +160,7 @@ export class WebhooksService {
     const received = data?.transaction?.transactionAmount;
     const accountRef = data?.transaction?.aliasAccountReference;
 
-    this.logger.log('Virtual account funded: ' + accountRef);
-
-    const vendor = await this.prisma.vendor.findUnique({
-      where: { accountRef },
-    });
-
+    const vendor = await this.prisma.vendor.findUnique({ where: { accountRef } });
     if (!vendor) {
       this.logger.warn('No vendor found for accountRef: ' + accountRef);
       return;
@@ -175,26 +182,14 @@ export class WebhooksService {
   }
 
   private async handleTransferSuccess(event: any) {
-    const data = event.data;
-    const merchantTxRef = data?.merchantTxRef || data?.transaction?.transactionId;
-
+    const merchantTxRef = event.data?.merchantTxRef || event.data?.transaction?.transactionId;
+    await this.prisma.payout.updateMany({ where: { merchantTxRef }, data: { status: 'success' } });
     this.logger.log('Transfer success: ' + merchantTxRef);
-
-    await this.prisma.payout.updateMany({
-      where: { merchantTxRef },
-      data: { status: 'success' },
-    });
   }
 
   private async handleTransferFailed(event: any) {
-    const data = event.data;
-    const merchantTxRef = data?.merchantTxRef || data?.transaction?.transactionId;
-
+    const merchantTxRef = event.data?.merchantTxRef || event.data?.transaction?.transactionId;
+    await this.prisma.payout.updateMany({ where: { merchantTxRef }, data: { status: 'failed' } });
     this.logger.warn('Transfer failed: ' + merchantTxRef);
-
-    await this.prisma.payout.updateMany({
-      where: { merchantTxRef },
-      data: { status: 'failed' },
-    });
   }
 }

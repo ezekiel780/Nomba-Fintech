@@ -78,6 +78,14 @@ let NombaService = NombaService_1 = class NombaService {
         const res = await this.http.get('/transfers/banks', { headers });
         return res.data.data;
     }
+    async verifyTransactionByOrderReference(orderReference) {
+        const headers = await this.authHeaders();
+        const res = await this.http.get('/transactions/accounts/single', {
+            headers,
+            params: { orderReference },
+        });
+        return res.data.data;
+    }
     async createSubAccount(accountName, accountRef) {
         const headers = await this.authHeaders();
         const res = await this.http.post('/accounts/sub-accounts', { accountName, accountRef }, { headers });
