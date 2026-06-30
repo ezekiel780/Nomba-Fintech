@@ -43,8 +43,11 @@ let TransactionsService = TransactionsService_1 = class TransactionsService {
                 orphans.push(tx);
                 this.logger.warn('Orphan transaction: ' + tx.merchantTxRef);
             }
-            else if (local.amount !== tx.amount) {
-                drifts.push({ nomba: tx, local });
+            else if (Number(local.amount) !== Number(tx.amount)) {
+                drifts.push({
+                    nomba: tx,
+                    local: { ...local, amount: local.amount.toString() },
+                });
                 this.logger.warn('Amount drift on: ' + tx.merchantTxRef);
             }
             else {

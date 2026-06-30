@@ -79,6 +79,12 @@ export class NombaService implements OnModuleInit {
     };
   }
 
+  async getBankCodes() {
+    const headers = await this.authHeaders();
+    const res = await this.http.get('/transfers/banks', { headers });
+    return res.data.data;
+  }
+
   async createSubAccount(accountName: string, accountRef: string) {
     const headers = await this.authHeaders();
     const res = await this.http.post(
@@ -172,9 +178,6 @@ export class NombaService implements OnModuleInit {
     merchantTxRef: string;
   }) {
     const headers = await this.authHeaders();
-    // NOTE: Nomba's transfer endpoint is versioned at /v2, unlike most other
-    // endpoints which sit under /v1. NOMBA_BASE_URL includes /v1, so we
-    // build the absolute path here rather than relying on the baseURL.
     const base = (this.config.get<string>('NOMBA_BASE_URL') || '').replace(/\/v1\/?$/, '');
     const res = await this.http.post(base + '/v2/transfers/bank', payload, { headers });
     return res.data.data;
@@ -188,7 +191,6 @@ export class NombaService implements OnModuleInit {
     cursor?: string;
   }) {
     const headers = await this.authHeaders();
-    // Real endpoint is /transactions/accounts, returning { results: [...], cursor }
     const res = await this.http.get('/transactions/accounts', { headers, params });
     return res.data.data;
   }

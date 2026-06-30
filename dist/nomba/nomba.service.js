@@ -73,6 +73,11 @@ let NombaService = NombaService_1 = class NombaService {
             'Content-Type': 'application/json',
         };
     }
+    async getBankCodes() {
+        const headers = await this.authHeaders();
+        const res = await this.http.get('/transfers/banks', { headers });
+        return res.data.data;
+    }
     async createSubAccount(accountName, accountRef) {
         const headers = await this.authHeaders();
         const res = await this.http.post('/accounts/sub-accounts', { accountName, accountRef }, { headers });

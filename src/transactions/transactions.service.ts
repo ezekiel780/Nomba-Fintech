@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { NombaService } from '../nomba/nomba.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -28,7 +28,6 @@ export class TransactionsService {
 
     const nombaData = await this.nomba.getTransactions({ dateFrom, dateTo });
 
-    // Real Nomba response shape is { results: [...], cursor }
     const transactions = nombaData?.results || [];
     const orphans: any[] = [];
     const drifts: any[] = [];
@@ -44,8 +43,11 @@ export class TransactionsService {
       if (!local) {
         orphans.push(tx);
         this.logger.warn('Orphan transaction: ' + tx.merchantTxRef);
-      } else if (local.amount !== tx.amount) {
-        drifts.push({ nomba: tx, local });
+      } else if (Number(local.amount) !== Number(tx.amount)) {
+        drifts.push({
+          nomba: tx,
+          local: { ...local, amount: local.amount.toString() },
+        });
         this.logger.warn('Amount drift on: ' + tx.merchantTxRef);
       } else {
         matched.push(tx.merchantTxRef);

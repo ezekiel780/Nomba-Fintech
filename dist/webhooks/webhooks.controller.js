@@ -22,14 +22,14 @@ let WebhooksController = WebhooksController_1 = class WebhooksController {
         this.webhooksService = webhooksService;
         this.logger = new common_1.Logger(WebhooksController_1.name);
     }
-    async handleNombaWebhook(req, res, signature) {
+    async handleNombaWebhook(req, res, signature, timestamp) {
         const rawBody = req.rawBody;
-        const isValid = this.webhooksService.verifySignature(rawBody, signature);
+        const event = JSON.parse(rawBody.toString());
+        const isValid = this.webhooksService.verifySignature(event, signature, timestamp);
         if (!isValid) {
             this.logger.warn('Invalid webhook signature - rejected');
             return res.status(401).json({ message: 'Invalid signature' });
         }
-        const event = JSON.parse(rawBody.toString());
         const eventType = event.event_type || event.event;
         this.logger.log('Webhook received: ' + eventType + ' [' + event.requestId + ']');
         res.status(200).json({ received: true });
@@ -44,8 +44,9 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Res)()),
     __param(2, (0, common_1.Headers)('nomba-signature')),
+    __param(3, (0, common_1.Headers)('nomba-timestamp')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object, String]),
+    __metadata("design:paramtypes", [Object, Object, String, String]),
     __metadata("design:returntype", Promise)
 ], WebhooksController.prototype, "handleNombaWebhook", null);
 exports.WebhooksController = WebhooksController = WebhooksController_1 = __decorate([

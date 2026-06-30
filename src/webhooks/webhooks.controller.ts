@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Req,
@@ -24,16 +24,18 @@ export class WebhooksController {
     @Req() req: any,
     @Res() res: any,
     @Headers('nomba-signature') signature: string,
+    @Headers('nomba-timestamp') timestamp: string,
   ) {
     const rawBody = req.rawBody as Buffer;
-    const isValid = this.webhooksService.verifySignature(rawBody, signature);
+    const event = JSON.parse(rawBody.toString());
+
+    const isValid = this.webhooksService.verifySignature(event, signature, timestamp);
 
     if (!isValid) {
       this.logger.warn('Invalid webhook signature - rejected');
       return res.status(401).json({ message: 'Invalid signature' });
     }
 
-    const event = JSON.parse(rawBody.toString());
     const eventType = event.event_type || event.event;
     this.logger.log('Webhook received: ' + eventType + ' [' + event.requestId + ']');
 

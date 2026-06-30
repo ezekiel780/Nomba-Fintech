@@ -4,18 +4,18 @@ export declare class CheckoutController {
     private readonly checkoutService;
     constructor(checkoutService: CheckoutService);
     initiate(dto: CreateCheckoutDto): Promise<{
-        orderReference: string;
-        checkoutLink: string;
+        orderReference: any;
+        checkoutLink: any;
         amount: number;
-        status: string;
+        status: any;
     }>;
     getStatus(orderReference: string): Promise<{
-        orderReference: string;
-        localStatus: string;
+        orderReference: any;
+        localStatus: any;
         nombaStatus: any;
-        vendor: string;
+        vendor: any;
         amount: number;
-        customerEmail: string;
+        customerEmail: any;
     }>;
     callback(orderReference: string): Promise<{
         message: string;

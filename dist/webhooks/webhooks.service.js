@@ -23,13 +23,37 @@ let WebhooksService = WebhooksService_1 = class WebhooksService {
         this.redis = redis;
         this.logger = new common_1.Logger(WebhooksService_1.name);
     }
-    verifySignature(rawBody, signature) {
-        if (!signature)
+    verifySignature(event, signature, timestamp) {
+        if (!signature || !timestamp)
             return false;
         const secret = this.config.get('NOMBA_WEBHOOK_SECRET') ?? '';
+        const data = event?.data || {};
+        const merchant = data?.merchant || {};
+        const transaction = data?.transaction || {};
+        const eventType = event?.event_type || event?.event || '';
+        const requestId = event?.requestId || '';
+        const userId = merchant?.userId || '';
+        const walletId = merchant?.walletId || '';
+        const transactionId = transaction?.transactionId || '';
+        const type = transaction?.type || '';
+        const time = transaction?.time || '';
+        let responseCode = transaction?.responseCode || '';
+        if (responseCode === 'null')
+            responseCode = '';
+        const hashingPayload = [
+            eventType,
+            requestId,
+            userId,
+            walletId,
+            transactionId,
+            type,
+            time,
+            responseCode,
+            timestamp,
+        ].join(':');
         const expected = crypto
             .createHmac('sha256', secret)
-            .update(rawBody)
+            .update(hashingPayload)
             .digest('base64');
         try {
             return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
@@ -83,15 +107,14 @@ let WebhooksService = WebhooksService_1 = class WebhooksService {
             data?.transaction?.merchantTxRef ||
             data?.orderReference;
         if (!orderReference) {
-            this.logger.warn('payment_success event missing a recognizable order reference: ' +
-                JSON.stringify(data?.order || {}));
+            this.logger.warn('payment_success event missing orderReference');
             return;
         }
         const session = await this.prisma.checkoutSession.findUnique({
             where: { orderReference },
         });
         if (!session) {
-            this.logger.warn('No checkout session found for reference: ' + orderReference);
+            this.logger.warn('No checkout session found for orderReference: ' + orderReference);
             return;
         }
         await this.prisma.checkoutSession.update({

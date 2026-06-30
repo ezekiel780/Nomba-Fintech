@@ -1,4 +1,5 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+﻿import { Injectable, Logger, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NombaService } from '../nomba/nomba.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
@@ -11,6 +12,7 @@ export class CheckoutService {
   constructor(
     private nomba: NombaService,
     private prisma: PrismaService,
+    private config: ConfigService,
   ) {}
 
   async createCheckout(dto: CreateCheckoutDto) {
@@ -23,8 +25,13 @@ export class CheckoutService {
     }
 
     const orderReference = 'order_' + randomUUID();
-    const callbackUrl = process.env.CHECKOUT_CALLBACK_URL
-      || 'http://localhost:3000/api/v1/checkout/callback';
+    const callbackUrl = this.config.get<string>('CHECKOUT_CALLBACK_URL');
+
+    if (!callbackUrl) {
+      throw new InternalServerErrorException(
+        'CHECKOUT_CALLBACK_URL is not configured on the server',
+      );
+    }
 
     this.logger.log(
       'Creating checkout order for vendor ' + vendor.name + ': NGN ' + dto.amountNaira,
@@ -80,12 +87,14 @@ export class CheckoutService {
       );
     }
 
+    const amountKobo = Number(session.amount);
+
     return {
       orderReference: session.orderReference,
       localStatus: session.status,
       nombaStatus: nombaStatus?.status || 'unknown',
       vendor: session.vendor.name,
-      amount: session.amount / 100,
+      amount: amountKobo / 100,
       customerEmail: session.customerEmail,
     };
   }

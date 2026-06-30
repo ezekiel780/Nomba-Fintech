@@ -7,7 +7,7 @@ export declare class WebhooksService {
     private redis;
     private readonly logger;
     constructor(config: ConfigService, prisma: PrismaService, redis: RedisService);
-    verifySignature(rawBody: Buffer, signature: string): boolean;
+    verifySignature(event: any, signature: string, timestamp: string): boolean;
     private isAlreadyProcessed;
     processEvent(event: any): Promise<void>;
     private handlePaymentSuccess;

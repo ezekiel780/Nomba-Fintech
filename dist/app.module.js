@@ -19,6 +19,7 @@ const redis_module_1 = require("./redis/redis.module");
 const otp_module_1 = require("./otp/otp.module");
 const health_module_1 = require("./health/health.module");
 const checkout_module_1 = require("./checkout/checkout.module");
+const email_module_1 = require("./email/email.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -29,6 +30,7 @@ exports.AppModule = AppModule = __decorate([
             prisma_module_1.PrismaModule,
             redis_module_1.RedisModule,
             otp_module_1.OtpModule,
+            email_module_1.EmailModule,
             nomba_module_1.NombaModule,
             vendors_module_1.VendorsModule,
             webhooks_module_1.WebhooksModule,

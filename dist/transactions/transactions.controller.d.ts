@@ -1,8 +1,11 @@
 import { TransactionsService } from './transactions.service';
+import { NombaService } from '../nomba/nomba.service';
 export declare class TransactionsController {
     private readonly transactionsService;
-    constructor(transactionsService: TransactionsService);
+    private readonly nomba;
+    constructor(transactionsService: TransactionsService, nomba: NombaService);
     findAll(dateFrom?: string, dateTo?: string, status?: string): Promise<any>;
+    getBankCodes(): Promise<any>;
     reconcile(dateFrom: string, dateTo: string): Promise<{
         ranAt: string;
         period: {

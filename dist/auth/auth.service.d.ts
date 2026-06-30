@@ -13,14 +13,14 @@ export declare class AuthService {
     constructor(prisma: PrismaService, redis: RedisService, otp: OtpService, jwt: JwtService);
     register(dto: RegisterDto): Promise<{
         message: string;
-        userId: string;
+        userId: any;
     }>;
     verifyOtp(email: string, code: string): Promise<{
         message: string;
         user: {
-            id: string;
-            name: string;
-            email: string;
+            id: any;
+            name: any;
+            email: any;
         };
     }>;
     login(dto: LoginDto): Promise<{
@@ -28,9 +28,9 @@ export declare class AuthService {
         accessToken: string;
         refreshToken: string;
         user: {
-            id: string;
-            name: string;
-            email: string;
+            id: any;
+            name: any;
+            email: any;
         };
     }>;
     refresh(userId: string, refreshToken: string): Promise<{

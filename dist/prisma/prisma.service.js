@@ -12,22 +12,32 @@ var PrismaService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaService = void 0;
 const common_1 = require("@nestjs/common");
-const client_1 = require("@prisma/client");
 const adapter_pg_1 = require("@prisma/adapter-pg");
-let PrismaService = PrismaService_1 = class PrismaService extends client_1.PrismaClient {
+let PrismaService = PrismaService_1 = class PrismaService {
     constructor() {
+        this.logger = new common_1.Logger(PrismaService_1.name);
         const adapter = new adapter_pg_1.PrismaPg({
             connectionString: process.env.DATABASE_URL,
         });
-        super({ adapter });
-        this.logger = new common_1.Logger(PrismaService_1.name);
+        const { PrismaClient } = require('@prisma/client');
+        this.client = new PrismaClient({ adapter });
     }
+    get user() { return this.client.user; }
+    get vendor() { return this.client.vendor; }
+    get transaction() { return this.client.transaction; }
+    get webhookEvent() { return this.client.webhookEvent; }
+    get payout() { return this.client.payout; }
+    get checkoutSession() { return this.client.checkoutSession; }
+    get otp() { return this.client.otp; }
+    async $queryRaw(...args) { return this.client.$queryRaw(...args); }
+    get $connect() { return this.client.$connect.bind(this.client); }
+    get $disconnect() { return this.client.$disconnect.bind(this.client); }
     async onModuleInit() {
-        await this.$connect();
+        await this.client.$connect();
         this.logger.log('Database connected successfully');
     }
     async onModuleDestroy() {
-        await this.$disconnect();
+        await this.client.$disconnect();
         this.logger.log('Database disconnected');
     }
 };

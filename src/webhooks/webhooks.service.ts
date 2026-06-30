@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -14,13 +14,41 @@ export class WebhooksService {
     private redis: RedisService,
   ) {}
 
-  verifySignature(rawBody: Buffer, signature: string): boolean {
-    if (!signature) return false;
+  verifySignature(event: any, signature: string, timestamp: string): boolean {
+    if (!signature || !timestamp) return false;
+
     const secret = this.config.get<string>('NOMBA_WEBHOOK_SECRET') ?? '';
+    const data = event?.data || {};
+    const merchant = data?.merchant || {};
+    const transaction = data?.transaction || {};
+
+    const eventType = event?.event_type || event?.event || '';
+    const requestId = event?.requestId || '';
+    const userId = merchant?.userId || '';
+    const walletId = merchant?.walletId || '';
+    const transactionId = transaction?.transactionId || '';
+    const type = transaction?.type || '';
+    const time = transaction?.time || '';
+    let responseCode = transaction?.responseCode || '';
+    if (responseCode === 'null') responseCode = '';
+
+    const hashingPayload = [
+      eventType,
+      requestId,
+      userId,
+      walletId,
+      transactionId,
+      type,
+      time,
+      responseCode,
+      timestamp,
+    ].join(':');
+
     const expected = crypto
       .createHmac('sha256', secret)
-      .update(rawBody)
+      .update(hashingPayload)
       .digest('base64');
+
     try {
       return crypto.timingSafeEqual(
         Buffer.from(signature),
@@ -74,10 +102,6 @@ export class WebhooksService {
 
   private async handlePaymentSuccess(event: any) {
     const data = event.data;
-    // Nomba's real payload nests order info under data.order and the
-    // transaction reference under data.transaction.merchantTxRef.
-    // We try every plausible field since the exact shape can vary by
-    // payment method (card vs tokenized vs bank transfer).
     const orderReference =
       data?.order?.orderReference ||
       data?.order?.orderId ||
@@ -85,10 +109,7 @@ export class WebhooksService {
       data?.orderReference;
 
     if (!orderReference) {
-      this.logger.warn(
-        'payment_success event missing a recognizable order reference: ' +
-        JSON.stringify(data?.order || {}),
-      );
+      this.logger.warn('payment_success event missing orderReference');
       return;
     }
 
@@ -97,7 +118,7 @@ export class WebhooksService {
     });
 
     if (!session) {
-      this.logger.warn('No checkout session found for reference: ' + orderReference);
+      this.logger.warn('No checkout session found for orderReference: ' + orderReference);
       return;
     }
 

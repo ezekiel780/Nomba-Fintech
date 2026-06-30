@@ -12,13 +12,15 @@ var CheckoutService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CheckoutService = void 0;
 const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
 const nomba_service_1 = require("../nomba/nomba.service");
 const prisma_service_1 = require("../prisma/prisma.service");
 const crypto_1 = require("crypto");
 let CheckoutService = CheckoutService_1 = class CheckoutService {
-    constructor(nomba, prisma) {
+    constructor(nomba, prisma, config) {
         this.nomba = nomba;
         this.prisma = prisma;
+        this.config = config;
         this.logger = new common_1.Logger(CheckoutService_1.name);
     }
     async createCheckout(dto) {
@@ -29,8 +31,10 @@ let CheckoutService = CheckoutService_1 = class CheckoutService {
             throw new common_1.BadRequestException('Vendor not found for the given vendorRef');
         }
         const orderReference = 'order_' + (0, crypto_1.randomUUID)();
-        const callbackUrl = process.env.CHECKOUT_CALLBACK_URL
-            || 'http://localhost:3000/api/v1/checkout/callback';
+        const callbackUrl = this.config.get('CHECKOUT_CALLBACK_URL');
+        if (!callbackUrl) {
+            throw new common_1.InternalServerErrorException('CHECKOUT_CALLBACK_URL is not configured on the server');
+        }
         this.logger.log('Creating checkout order for vendor ' + vendor.name + ': NGN ' + dto.amountNaira);
         const nombaOrder = await this.nomba.createCheckoutOrder({
             orderReference,
@@ -74,12 +78,13 @@ let CheckoutService = CheckoutService_1 = class CheckoutService {
         catch (err) {
             this.logger.warn('Could not fetch live status from Nomba for ' + orderReference + ': ' + err.message);
         }
+        const amountKobo = Number(session.amount);
         return {
             orderReference: session.orderReference,
             localStatus: session.status,
             nombaStatus: nombaStatus?.status || 'unknown',
             vendor: session.vendor.name,
-            amount: session.amount / 100,
+            amount: amountKobo / 100,
             customerEmail: session.customerEmail,
         };
     }
@@ -102,6 +107,7 @@ exports.CheckoutService = CheckoutService;
 exports.CheckoutService = CheckoutService = CheckoutService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [nomba_service_1.NombaService,
-        prisma_service_1.PrismaService])
+        prisma_service_1.PrismaService,
+        config_1.ConfigService])
 ], CheckoutService);
 //# sourceMappingURL=checkout.service.js.map

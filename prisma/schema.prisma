@@ -42,7 +42,7 @@ model Vendor {
 
   transactions        Transaction[]
   payouts             Payout[]
-  checkoutSessions     CheckoutSession[]
+  checkoutSessions    CheckoutSession[]
 
   @@map("vendors")
 }
@@ -50,7 +50,7 @@ model Vendor {
 model CheckoutSession {
   id              String    @id @default(uuid())
   orderReference  String    @unique
-  amount          Int
+  amount          BigInt
   currency        String    @default("NGN")
   status          String    @default("pending")
   checkoutLink    String?
@@ -68,8 +68,8 @@ model CheckoutSession {
 model Transaction {
   id              String    @id @default(uuid())
   merchantTxRef   String    @unique
-  amount          Int
-  amountExpected  Int?
+  amount          BigInt
+  amountExpected  BigInt?
   currency        String    @default("NGN")
   status          String    @default("pending")
   type            String
@@ -98,7 +98,7 @@ model WebhookEvent {
 model Payout {
   id              String    @id @default(uuid())
   merchantTxRef   String    @unique
-  amount          Int
+  amount          BigInt
   status          String    @default("pending")
   narration       String?
   createdAt       DateTime  @default(now())

@@ -1,6 +1,7 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+﻿import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { NombaService } from '../nomba/nomba.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { randomUUID } from 'crypto';
 
@@ -11,6 +12,7 @@ export class VendorsService {
   constructor(
     private nomba: NombaService,
     private prisma: PrismaService,
+    private email: EmailService,
   ) {}
 
   async createVendor(dto: CreateVendorDto, userId: string) {
@@ -47,6 +49,12 @@ export class VendorsService {
     });
 
     this.logger.log('Vendor created: ' + accountRef);
+
+    const admin = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (admin) {
+      await this.email.sendVendorCreated(admin.email, vendor.name, vendor.accountRef);
+    }
+
     return vendor;
   }
 
@@ -68,10 +76,12 @@ export class VendorsService {
       _sum: { amount: true },
     });
 
+    const totalKobo = balance._sum.amount ? Number(balance._sum.amount) : 0;
+
     return {
       vendor: vendor.name,
-      balanceKobo: balance._sum.amount || 0,
-      balanceNaira: (balance._sum.amount || 0) / 100,
+      balanceKobo: totalKobo,
+      balanceNaira: totalKobo / 100,
     };
   }
 
@@ -92,7 +102,7 @@ export class VendorsService {
     );
 
     const merchantTxRef = 'payout_' + ref + '_' + randomUUID();
-    const amountKobo = amountNaira * 100;
+    const amountKobo = Math.round(amountNaira * 100);
 
     const transfer = await this.nomba.transferToBank({
       amount: amountKobo,
@@ -116,6 +126,19 @@ export class VendorsService {
     });
 
     this.logger.log('Settlement initiated for ' + vendor.name + ': NGN ' + amountNaira);
-    return { merchantTxRef, transfer, payout };
+
+    const admin = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (admin) {
+      await this.email.sendTransferSuccessful(admin.email, vendor.name, amountNaira, merchantTxRef);
+    }
+
+    return {
+      merchantTxRef,
+      transfer,
+      payout: {
+        ...payout,
+        amount: payout.amount.toString(),
+      },
+    };
   }
 }

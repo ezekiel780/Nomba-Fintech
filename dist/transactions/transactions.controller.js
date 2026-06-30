@@ -17,12 +17,17 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const transactions_service_1 = require("./transactions.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const nomba_service_1 = require("../nomba/nomba.service");
 let TransactionsController = class TransactionsController {
-    constructor(transactionsService) {
+    constructor(transactionsService, nomba) {
         this.transactionsService = transactionsService;
+        this.nomba = nomba;
     }
     findAll(dateFrom, dateTo, status) {
         return this.transactionsService.getTransactions({ dateFrom, dateTo, status });
+    }
+    getBankCodes() {
+        return this.nomba.getBankCodes();
     }
     reconcile(dateFrom, dateTo) {
         return this.transactionsService.reconcile(dateFrom, dateTo);
@@ -42,6 +47,13 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", void 0)
 ], TransactionsController.prototype, "findAll", null);
+__decorate([
+    (0, swagger_1.ApiOperation)({ summary: 'Get the official list of Nigerian bank codes from Nomba' }),
+    (0, common_1.Get)('bank-codes'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], TransactionsController.prototype, "getBankCodes", null);
 __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Run reconciliation between Nomba records and local ledger' }),
     (0, common_1.Get)('reconcile/run'),
@@ -64,6 +76,7 @@ exports.TransactionsController = TransactionsController = __decorate([
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Controller)('transactions'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [transactions_service_1.TransactionsService])
+    __metadata("design:paramtypes", [transactions_service_1.TransactionsService,
+        nomba_service_1.NombaService])
 ], TransactionsController);
 //# sourceMappingURL=transactions.controller.js.map

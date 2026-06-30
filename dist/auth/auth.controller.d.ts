@@ -21,14 +21,14 @@ export declare class AuthController {
     constructor(authService: AuthService);
     register(dto: RegisterDto): Promise<{
         message: string;
-        userId: string;
+        userId: any;
     }>;
     verifyOtp(body: VerifyOtpDto): Promise<{
         message: string;
         user: {
-            id: string;
-            name: string;
-            email: string;
+            id: any;
+            name: any;
+            email: any;
         };
     }>;
     login(dto: LoginDto): Promise<{
@@ -36,9 +36,9 @@ export declare class AuthController {
         accessToken: string;
         refreshToken: string;
         user: {
-            id: string;
-            name: string;
-            email: string;
+            id: any;
+            name: any;
+            email: any;
         };
     }>;
     refresh(body: RefreshTokenDto): Promise<{
