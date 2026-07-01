@@ -19,10 +19,7 @@ export class VendorsService {
     const accountRef = 'vendor_' + randomUUID().split('-')[0];
 
     this.logger.log('Looking up bank account for vendor: ' + dto.name);
-    const lookup = await this.nomba.bankAccountLookup(
-      dto.bankCode,
-      dto.accountNumber,
-    );
+    const lookup = await this.nomba.bankAccountLookup(dto.bankCode, dto.accountNumber);
     if (!lookup?.accountName) {
       throw new BadRequestException('Could not verify vendor bank account');
     }
@@ -85,21 +82,13 @@ export class VendorsService {
     };
   }
 
-  async settleVendor(
-    ref: string,
-    amountNaira: number,
-    userId: string,
-    narration?: string,
-  ) {
+  async settleVendor(ref: string, amountNaira: number, userId: string, narration?: string) {
     const vendor = await this.prisma.vendor.findUnique({
       where: { accountRef: ref },
     });
     if (!vendor) throw new BadRequestException('Vendor not found');
 
-    const lookup = await this.nomba.bankAccountLookup(
-      vendor.bankCode,
-      vendor.accountNumber,
-    );
+    const lookup = await this.nomba.bankAccountLookup(vendor.bankCode, vendor.accountNumber);
 
     const merchantTxRef = 'payout_' + ref + '_' + randomUUID();
     const amountKobo = Math.round(amountNaira * 100);
@@ -131,6 +120,8 @@ export class VendorsService {
     if (admin) {
       await this.email.sendTransferSuccessful(admin.email, vendor.name, amountNaira, merchantTxRef);
     }
+
+    await this.email.sendVendorPayoutNotification(vendor.email, vendor.name, amountNaira, merchantTxRef);
 
     return {
       merchantTxRef,

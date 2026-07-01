@@ -112,6 +112,7 @@ let VendorsService = VendorsService_1 = class VendorsService {
         if (admin) {
             await this.email.sendTransferSuccessful(admin.email, vendor.name, amountNaira, merchantTxRef);
         }
+        await this.email.sendVendorPayoutNotification(vendor.email, vendor.name, amountNaira, merchantTxRef);
         return {
             merchantTxRef,
             transfer,

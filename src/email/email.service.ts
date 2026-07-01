@@ -56,4 +56,22 @@ export class EmailService {
 
     await this.send(adminEmail, 'Transfer initiated: NGN ' + amountNaira.toLocaleString(), html);
   }
+
+  async sendVendorPayoutNotification(vendorEmail: string, vendorName: string, amountNaira: number, merchantTxRef: string): Promise<void> {
+    const html =
+      '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">' +
+      '<h2 style="color: #0B3D2E;">Your payout is on the way</h2>' +
+      '<p style="color: #444;">Hi <strong>' + vendorName + '</strong>,</p>' +
+      '<p style="color: #444;">A payout of <strong>NGN ' + amountNaira.toLocaleString() + '</strong> has been initiated to your registered bank account.</p>' +
+      '<div style="background: #E4EEE7; padding: 16px; border-radius: 8px; margin: 20px 0;">' +
+      '<p style="margin: 4px 0; font-family: monospace; color: #1A5C45;">Amount: NGN ' + amountNaira.toLocaleString() + '</p>' +
+      '<p style="margin: 4px 0; font-family: monospace; color: #1A5C45;">Reference: ' + merchantTxRef + '</p>' +
+      '</div>' +
+      '<p style="color: #888; font-size: 14px;">Funds typically arrive within minutes. Keep this reference for your records.</p>' +
+      '<hr style="border: none; border-top: 1px solid #eee;" />' +
+      '<p style="color: #aaa; font-size: 12px;">VendHub Marketplace</p>' +
+      '</div>';
+
+    await this.send(vendorEmail, 'Payout of NGN ' + amountNaira.toLocaleString() + ' initiated', html);
+  }
 }
