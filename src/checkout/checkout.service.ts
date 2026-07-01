@@ -25,13 +25,15 @@ export class CheckoutService {
     }
 
     const orderReference = 'order_' + randomUUID();
-    const callbackUrl = this.config.get<string>('CHECKOUT_CALLBACK_URL');
+    const callbackBase = this.config.get<string>('CHECKOUT_CALLBACK_URL');
 
-    if (!callbackUrl) {
+    if (!callbackBase) {
       throw new InternalServerErrorException(
         'CHECKOUT_CALLBACK_URL is not configured on the server',
       );
     }
+
+    const callbackUrl = callbackBase + '/' + orderReference;
 
     this.logger.log(
       'Creating checkout order for vendor ' + vendor.name + ': NGN ' + dto.amountNaira,

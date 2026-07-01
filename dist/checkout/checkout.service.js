@@ -31,10 +31,11 @@ let CheckoutService = CheckoutService_1 = class CheckoutService {
             throw new common_1.BadRequestException('Vendor not found for the given vendorRef');
         }
         const orderReference = 'order_' + (0, crypto_1.randomUUID)();
-        const callbackUrl = this.config.get('CHECKOUT_CALLBACK_URL');
-        if (!callbackUrl) {
+        const callbackBase = this.config.get('CHECKOUT_CALLBACK_URL');
+        if (!callbackBase) {
             throw new common_1.InternalServerErrorException('CHECKOUT_CALLBACK_URL is not configured on the server');
         }
+        const callbackUrl = callbackBase + '/' + orderReference;
         this.logger.log('Creating checkout order for vendor ' + vendor.name + ': NGN ' + dto.amountNaira);
         const nombaOrder = await this.nomba.createCheckoutOrder({
             orderReference,
