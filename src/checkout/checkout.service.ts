@@ -24,7 +24,7 @@ export class CheckoutService {
       throw new BadRequestException('Vendor not found for the given vendorRef');
     }
 
-    const orderReference = 'order_' + randomUUID();
+    const orderReference = randomUUID();
     const callbackBase = this.config.get<string>('CHECKOUT_CALLBACK_URL');
 
     if (!callbackBase) {

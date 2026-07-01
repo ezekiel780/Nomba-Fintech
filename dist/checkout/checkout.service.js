@@ -30,7 +30,7 @@ let CheckoutService = CheckoutService_1 = class CheckoutService {
         if (!vendor) {
             throw new common_1.BadRequestException('Vendor not found for the given vendorRef');
         }
-        const orderReference = 'order_' + (0, crypto_1.randomUUID)();
+        const orderReference = (0, crypto_1.randomUUID)();
         const callbackBase = this.config.get('CHECKOUT_CALLBACK_URL');
         if (!callbackBase) {
             throw new common_1.InternalServerErrorException('CHECKOUT_CALLBACK_URL is not configured on the server');
