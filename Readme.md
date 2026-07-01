@@ -14,7 +14,7 @@ Built for the **DevCareer x Nomba Hackathon** — Marketplace / Multi-vendor tra
 | 📖 Swagger Docs | `https://nomba-fintech.onrender.com/api/docs` |
 | 🖥️ Frontend | `https://vendhub-frontend-one.vercel.app` |
 | ❤️ Health Check | `https://nomba-fintech.onrender.com/api/v1/health` |
-| 📡 Webhook Endpoint | `https://nomba-fintech.onrender.com/api/v1/webhooks/nomba` |
+| 📡 Webhook Endpoint | `https://nomba-fintech.onrender.com/-----/------` |
 | 💻 GitHub Repo | `https://github.com/ezekiel780/Nomba-Fintech` |
 
 ---
