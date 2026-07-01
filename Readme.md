@@ -1,186 +1,382 @@
 # VendHub — Marketplace Payment Infrastructure on Nomba
 
-VendHub is a multi-vendor marketplace backend that gives every vendor an isolated
-virtual account for receiving payments, a hosted checkout flow for customers,
-automated settlement via bank transfer, and a reconciliation pipeline — all built
-on the Nomba API.
+VendHub is a multi-vendor marketplace platform that gives every vendor an isolated virtual account for receiving payments, a hosted checkout flow for customers, automated settlement via bank transfer, and a reconciliation pipeline — all built on the Nomba API.
 
-Built for the DevCareer x Nomba Hackathon — Marketplace / Multi-vendor track.
+Built for the **DevCareer x Nomba Hackathon** — Marketplace / Multi-vendor track.
 
-## Stack
-
-- **Backend:** NestJS (TypeScript)
-- **Database:** PostgreSQL via Supabase, accessed with Prisma ORM
-- **Cache / Idempotency store:** Redis (Memurai locally, Upstash in production)
-- **Email (transactional notifications):** Resend
-- **Auth:** JWT access + refresh tokens, OTP-verified email registration
-- **API docs:** Swagger at `/api/docs`
-- **Payments:** Nomba API (Checkout, Virtual Accounts, Transfers, Webhooks, Transactions)
-- **Frontend:** React + Vite + Tailwind, deployed on Vercel
-- **Backend hosting:** Render
+---
 
 ## Live URLs
 
-- API base: `https://nomba-fintech.onrender.com/api/v1`
-- Swagger docs: `https://nomba-fintech.onrender.com/api/docs`
-- Frontend: `https://vendhub-frontend-one.vercel.app`
-- Webhook endpoint: `https://nomba-fintech.onrender.com/api/v1/webhooks/nomba`
+| | URL |
+|---|---|
+| 🌐 API Base | `https://nomba-fintech.onrender.com/api/v1` |
+| 📖 Swagger Docs | `https://nomba-fintech.onrender.com/api/docs` |
+| 🖥️ Frontend | `https://vendhub-frontend-one.vercel.app` |
+| ❤️ Health Check | `https://nomba-fintech.onrender.com/api/v1/health` |
+| 📡 Webhook Endpoint | `https://nomba-fintech.onrender.com/api/v1/webhooks/nomba` |
+| 💻 GitHub Repo | `https://github.com/ezekiel780/Nomba-Fintech` |
+
+---
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | NestJS (TypeScript) |
+| Database | PostgreSQL via Supabase, Prisma ORM |
+| Cache / Idempotency | Redis (Memurai locally, Upstash in production) |
+| Email | Resend (OTP + transactional notifications) |
+| Auth | JWT access + refresh tokens, OTP-verified email |
+| API Docs | Swagger at `/api/docs` |
+| Payments | Nomba API (Checkout, Virtual Accounts, Transfers, Webhooks, Transactions) |
+| Frontend | React + Vite + Tailwind CSS, deployed on Vercel |
+| Backend Hosting | Render |
+
+---
+
+## Project Structure
+
+```
+vendhub-backend/
+├── prisma/
+│   ├── migrations/             # All database migrations (versioned)
+│   │   ├── 20260626131321_init/
+│   │   ├── 20260626_add_refresh_token/
+│   │   └── 20260626_add_checkout_sessions/
+│   ├── schema.prisma           # Prisma schema (models + datasource)
+│   └── prisma.config.ts        # Prisma 7 config (datasource URL for migrations)
+│
+├── src/
+│   ├── auth/                   # Authentication module
+│   │   ├── dto/
+│   │   │   ├── register.dto.ts
+│   │   │   └── login.dto.ts
+│   │   ├── auth.controller.ts  # register, verify-otp, login, refresh, logout, forgot/reset
+│   │   ├── auth.service.ts     # Business logic, rate limiting, token signing
+│   │   ├── auth.module.ts
+│   │   ├── jwt.strategy.ts     # Passport JWT strategy (rejects refresh tokens)
+│   │   └── jwt-auth.guard.ts   # JWT guard for protected routes
+│   │
+│   ├── vendors/                # Vendor management module
+│   │   ├── dto/
+│   │   │   ├── create-vendor.dto.ts
+│   │   │   └── settle-vendor.dto.ts
+│   │   ├── vendors.controller.ts  # create, list, balance, settle
+│   │   ├── vendors.service.ts     # Bank lookup → virtual account → DB
+│   │   └── vendors.module.ts
+│   │
+│   ├── checkout/               # Checkout module
+│   │   ├── dto/
+│   │   │   └── create-checkout.dto.ts
+│   │   ├── checkout.controller.ts  # initiate, status, callback
+│   │   ├── checkout.service.ts     # Nomba checkout order + session tracking
+│   │   └── checkout.module.ts
+│   │
+│   ├── webhooks/               # Webhook receiver module
+│   │   ├── webhooks.controller.ts  # POST /webhooks/nomba
+│   │   ├── webhooks.service.ts     # HMAC verify → idempotency → event routing
+│   │   └── webhooks.module.ts
+│   │
+│   ├── transactions/           # Transactions + reconciliation module
+│   │   ├── dto/
+│   │   │   └── query-transaction.dto.ts
+│   │   ├── transactions.controller.ts  # list, get one, reconcile, bank-codes
+│   │   ├── transactions.service.ts     # Nomba API + reconciliation diff logic
+│   │   └── transactions.module.ts
+│   │
+│   ├── nomba/                  # Nomba API client (global singleton)
+│   │   ├── nomba.service.ts    # All Nomba API calls, token caching, error logging
+│   │   └── nomba.module.ts
+│   │
+│   ├── prisma/                 # Prisma client wrapper (global singleton)
+│   │   ├── prisma.service.ts   # PrismaClient with adapter-pg for Prisma 7
+│   │   └── prisma.module.ts
+│   │
+│   ├── redis/                  # Redis client wrapper (global singleton)
+│   │   ├── redis.service.ts    # OTP storage, token caching, webhook deduplication
+│   │   └── redis.module.ts
+│   │
+│   ├── otp/                    # OTP generation + email delivery
+│   │   ├── otp.service.ts      # Generate, rate-limit, send via Resend, verify
+│   │   └── otp.module.ts
+│   │
+│   ├── health/                 # Health check module
+│   │   ├── health.controller.ts  # GET /health — DB + Redis status
+│   │   └── health.module.ts
+│   │
+│   ├── app.module.ts           # Root module — imports all feature modules
+│   └── main.ts                 # Bootstrap — rawBody, Swagger, global prefix
+│
+├── .env.example                # Environment variable template
+├── .gitignore                  # Excludes .env, dist/, node_modules/
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+---
 
 ## Architecture
 
 ```
 Customer → Checkout (hosted Nomba page) → Webhook (payment_success)
-                                              ↓
-                                    VendHub marks order paid,
-                                    credits vendor's ledger balance
-                                              ↓
-                              Admin settles vendor → Nomba Transfer API
-                                              ↓
-                                    Reconciliation job
-                              compares Nomba's records vs local ledger
+                                                ↓
+                                      VendHub verifies HMAC signature
+                                      checks idempotency (requestId)
+                                      marks CheckoutSession as paid
+                                      credits Transaction to vendor ledger
+                                                ↓
+                                Admin settles vendor → Nomba Transfer API
+                                    (bank lookup → verified transfer)
+                                                ↓
+                                      Reconciliation job
+                                compares Nomba records vs local ledger
+                                flags orphans and amount drift
 ```
 
-Vendor balances are tracked in VendHub's own Postgres ledger (summed from
-successful `Transaction` records), not from Nomba's deprecated sub-account
-balance API — see "Known Limitations" for why.
+---
 
-## Database Schema (Entity-Relationship Model)
+## Database Schema
 
-VendHub uses a normalized relational schema, modeled as the following entities
-and relationships:
+### Entity Relationship Diagram
 
 ```
-User (1) ──────< (many) Vendor
-User (1) ──────< (many) Payout
-User (1) ──────< (many) Otp
+users (1) ──────────< vendors (many)
+users (1) ──────────< payouts (many)
+users (1) ──────────< otps (many)
 
-Vendor (1) ─────< (many) Transaction
-Vendor (1) ─────< (many) Payout
-Vendor (1) ─────< (many) CheckoutSession
+vendors (1) ─────────< transactions (many)
+vendors (1) ─────────< payouts (many)
+vendors (1) ─────────< checkout_sessions (many)
 
-WebhookEvent — standalone audit log, referenced by requestId for idempotency
+webhook_events  ── standalone audit log (keyed by requestId)
 ```
 
-### Entities
+### SQL Schema (Generated by Prisma Migrations)
 
-**User** — the marketplace admin account. Holds login credentials (hashed
-password), email verification state, and a hashed refresh token for session
-management. One user can own many vendors.
+```sql
+-- ─── Users ──────────────────────────────────────────────────────────────────
+CREATE TABLE users (
+  id             TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  name           TEXT NOT NULL,
+  email          TEXT NOT NULL UNIQUE,
+  password       TEXT NOT NULL,                    -- bcrypt hashed
+  "isVerified"   BOOLEAN NOT NULL DEFAULT FALSE,
+  "refreshToken" TEXT,                             -- bcrypt hashed, nullable
+  "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"    TIMESTAMP(3) NOT NULL
+);
 
-**Vendor** — a seller onboarded into the marketplace. Stores the resolved bank
-account details (from Nomba's bank lookup), the Nomba virtual account assigned
-to them, and a unique `accountRef` used as the stable external reference
-across all Nomba API calls. Belongs to exactly one User (the admin who
-onboarded them).
+-- ─── Vendors ─────────────────────────────────────────────────────────────────
+CREATE TABLE vendors (
+  id                    TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  name                  TEXT NOT NULL,
+  email                 TEXT NOT NULL,
+  "bankCode"            TEXT NOT NULL,
+  "accountNumber"       TEXT NOT NULL,
+  "resolvedAccountName" TEXT NOT NULL,             -- verified via Nomba bank lookup
+  "accountRef"          TEXT NOT NULL UNIQUE,      -- stable external ref for Nomba API
+  "subAccountId"        TEXT,                      -- Nomba sub-account (dashboard-provisioned)
+  "virtualAccountNo"    TEXT,                      -- Nomba NUBAN for this vendor
+  "virtualBankName"     TEXT,
+  "createdAt"           TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"           TIMESTAMP(3) NOT NULL,
+  "userId"              TEXT NOT NULL REFERENCES users(id)
+);
 
-**Transaction** — an immutable record of a single money movement tied to a
-vendor: either a virtual account being funded by a customer, or a checkout
-payment succeeding. This table is the source of truth for vendor balances —
-balance is computed as `SUM(amount) WHERE status = 'success'`, not stored as a
-mutable counter, to avoid drift between the ledger and reality.
+-- ─── Checkout Sessions ────────────────────────────────────────────────────────
+CREATE TABLE checkout_sessions (
+  id               TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  "orderReference" TEXT NOT NULL UNIQUE,           -- Nomba order reference (UUID)
+  amount           INTEGER NOT NULL,               -- in kobo (NGN × 100)
+  currency         TEXT NOT NULL DEFAULT 'NGN',
+  status           TEXT NOT NULL DEFAULT 'pending', -- pending | paid
+  "checkoutLink"   TEXT,                           -- Nomba hosted payment URL
+  "customerEmail"  TEXT NOT NULL,
+  "customerId"     TEXT,
+  "createdAt"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"      TIMESTAMP(3) NOT NULL,
+  "vendorId"       TEXT NOT NULL REFERENCES vendors(id)
+);
 
-**CheckoutSession** — a hosted Nomba checkout order created for a specific
-vendor and amount. Tracks `pending` → `paid` status, updated only by a
-verified webhook, never by the customer-facing callback redirect alone.
+-- ─── Transactions ─────────────────────────────────────────────────────────────
+CREATE TABLE transactions (
+  id              TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  "merchantTxRef" TEXT NOT NULL UNIQUE,            -- idempotency key for all calls
+  amount          INTEGER NOT NULL,                -- in kobo
+  "amountExpected" INTEGER,
+  currency        TEXT NOT NULL DEFAULT 'NGN',
+  status          TEXT NOT NULL DEFAULT 'pending', -- pending | success | failed
+  type            TEXT NOT NULL,                   -- payment_success | virtual_account.funded
+  narration       TEXT,
+  "customerEmail" TEXT,
+  "customerId"    TEXT,
+  "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"     TIMESTAMP(3) NOT NULL,
+  "vendorId"      TEXT REFERENCES vendors(id)
+);
 
-**Payout** — a record of an outbound settlement (vendor payout) initiated via
-Nomba's Transfer API. Tracks `pending` → `success` / `failed` status, updated
-by the `transfer.success` / `transfer.failed` webhook events.
+-- ─── Payouts ─────────────────────────────────────────────────────────────────
+CREATE TABLE payouts (
+  id              TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  "merchantTxRef" TEXT NOT NULL UNIQUE,            -- idempotency key for transfers
+  amount          INTEGER NOT NULL,                -- in kobo
+  status          TEXT NOT NULL DEFAULT 'pending', -- pending | success | failed
+  narration       TEXT,
+  "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"     TIMESTAMP(3) NOT NULL,
+  "vendorId"      TEXT NOT NULL REFERENCES vendors(id),
+  "userId"        TEXT NOT NULL REFERENCES users(id)
+);
 
-**WebhookEvent** — an audit log of every webhook received from Nomba, keyed by
-Nomba's own `requestId`. This table is the mechanism behind idempotency: a
-duplicate webhook delivery (which Nomba's own documentation confirms can
-happen on retry) is detected and ignored before it can double-process a
-payment or settlement.
+-- ─── Webhook Events (Idempotency Audit Log) ───────────────────────────────────
+CREATE TABLE webhook_events (
+  id            TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  "requestId"   TEXT NOT NULL UNIQUE,              -- Nomba requestId — deduplication key
+  "eventType"   TEXT NOT NULL,
+  payload       JSONB NOT NULL,                    -- full raw webhook payload
+  "processedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
-**Otp** — short-lived verification codes for registration and password reset,
-tied to a User.
+-- ─── OTPs ────────────────────────────────────────────────────────────────────
+CREATE TABLE otps (
+  id          TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  code        TEXT NOT NULL,
+  type        TEXT NOT NULL,                       -- register | reset_password
+  used        BOOLEAN NOT NULL DEFAULT FALSE,
+  "expiresAt" TIMESTAMP(3) NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "userId"    TEXT NOT NULL REFERENCES users(id)
+);
+```
 
-## Normalization
+### Normalization
 
 The schema is in **Third Normal Form (3NF)**:
 
-- **1NF** — every column holds a single atomic value; no repeating groups or
-  arrays stored in a single field (e.g. a vendor's transactions live in their
-  own table, not as a JSON array on the vendor row).
-- **2NF** — every non-key column depends on the whole primary key. Since every
-  table uses a single-column UUID primary key, partial dependency (a 2NF
-  violation, which only applies to composite keys) cannot occur.
-- **3NF** — no transitive dependencies: non-key columns depend only on the
-  primary key, not on other non-key columns. For example, `Vendor.userId`
-  references the owning admin directly; the admin's email is never duplicated
-  onto the Vendor row, even though it's frequently needed together (it's
-  joined at query time instead).
+**1NF** — every column holds a single atomic value. No arrays or JSON blobs store repeating groups — a vendor's transactions live in their own table, not as a JSON array on the vendor row.
 
-**Why not a star or snowflake schema:** star and snowflake schemas are
-dimensional modeling patterns designed for OLAP (analytical/reporting)
-workloads — wide fact tables surrounded by denormalized dimension tables,
-optimized for aggregate queries across large historical datasets. VendHub is
-an OLTP (transactional) system: every write needs to be immediately
-consistent (a vendor's balance must reflect a settlement the instant it's
-recorded), and the data volume per entity is modest. Applying a star schema
-here would mean deliberately denormalizing data that needs strict consistency
-guarantees, in exchange for query performance benefits VendHub doesn't need
-at this scale. A normalized 3NF relational schema is the correct fit for this
-workload; a star schema would be the correct choice if VendHub later needed a
-separate analytics/reporting data warehouse fed by ETL from this OLTP
-database — which is a reasonable future evolution, not a current requirement.
+**2NF** — every non-key column depends on the whole primary key. All tables use a single-column UUID primary key, so partial dependency cannot occur.
+
+**3NF** — no transitive dependencies. Non-key columns depend only on the primary key, not on other non-key columns. The vendor's admin email is never duplicated onto the vendor row — it is joined at query time via the `userId` foreign key.
+
+**Why not a star schema:** star and snowflake schemas are OLAP (analytical) patterns optimized for aggregate queries over large historical datasets. VendHub is an OLTP system — every write must be immediately consistent (a vendor's balance must reflect a payment the instant it's recorded). A normalized 3NF schema is the correct fit. A star schema would be appropriate for a separate analytics/reporting data warehouse fed by ETL from this OLTP database — a reasonable future evolution.
+
+---
+
+## Normalization (1NF–6NF)
+
+| Normal Form | Status | Notes |
+|---|---|---|
+| 1NF | ✅ | All columns atomic, no repeating groups |
+| 2NF | ✅ | Single-column PKs everywhere, no partial dependencies |
+| 3NF | ✅ | No transitive dependencies, no redundant data |
+| BCNF | ✅ | Every determinant is a candidate key |
+| 4NF | ✅ | No multi-valued dependencies |
+| 5NF | ✅ | No join dependencies beyond those implied by candidate keys |
+| 6NF | N/A | 6NF applies to temporal databases; VendHub uses `createdAt`/`updatedAt` timestamps, not bitemporal modeling |
+
+---
 
 ## Data Integration
 
-VendHub integrates with Nomba through two distinct data flows:
+**Outbound (VendHub → Nomba):** REST API calls authenticated via a cached OAuth2 client-credentials token (refreshed automatically at the 55-minute mark). Every failed call logs the full Nomba error response for precise debugging.
 
-**Outbound (VendHub → Nomba):** REST API calls for bank account lookup,
-virtual account creation, checkout order creation, and bank transfers. Every
-outbound call is authenticated via a cached OAuth2 client-credentials token
-(refreshed automatically before expiry) and logged with full request/response
-detail on failure, so upstream Nomba errors are surfaced precisely rather than
-swallowed into generic failures.
+**Inbound (Nomba → VendHub):** Asynchronous webhook events delivered to `/api/v1/webhooks/nomba`. Each event is:
 
-**Inbound (Nomba → VendHub):** asynchronous webhook events
-(`payment_success`, `virtual_account.funded`, `transfer.success`,
-`transfer.failed`) delivered to a single endpoint. Each event is:
+1. Verified via HMAC-SHA256 field-concatenation signature (per Nomba's documented algorithm)
+2. Checked for duplicates via `requestId` (Redis + `webhook_events` table)
+3. Routed to the correct handler (`CheckoutSession`, `Transaction`, or `Payout`)
+4. Acknowledged with `200 OK` immediately — processing is async so Nomba never times out
 
-1. Verified via HMAC-SHA256 signature before any processing occurs
-2. Checked against `WebhookEvent.requestId` for idempotency (Redis + database)
-3. Routed to a handler that updates the relevant `CheckoutSession`,
-   `Transaction`, or `Payout` record
-4. Acknowledged with `200 OK` immediately, with processing happening
-   asynchronously after the response is sent — so a slow downstream operation
-   never causes Nomba to time out and retry unnecessarily
+---
 
-This pattern (signature verification → idempotency check → async processing →
-immediate ack) follows Nomba's own documented best practices for webhook
-consumers.
+## API Overview
+
+| Module | Endpoints | Auth |
+|---|---|---|
+| Auth | register, verify-otp, login, refresh, logout, forgot-password, reset-password | Public (except logout) |
+| Vendors | create, list, balance, settle | JWT |
+| Checkout | initiate, status, callback | Public (customer-facing) |
+| Webhooks | Nomba event receiver | HMAC signature |
+| Transactions | list, get one, reconcile, bank-codes | JWT |
+| Health | status check | Public |
+
+Full interactive docs with Try it out at `/api/docs`.
+
+---
+
+## Auth Flow
+
+```
+POST /auth/register        → creates user, sends OTP via Resend
+POST /auth/verify-otp      → confirms email, no token issued
+POST /auth/login           → returns accessToken (15 min) + refreshToken (30 days)
+POST /auth/refresh         → exchanges refreshToken for new token pair
+POST /auth/logout          → revokes stored refresh token (JWT required)
+POST /auth/forgot-password → sends password reset OTP
+POST /auth/reset-password  → resets password using OTP
+```
+
+## Vendor Flow
+
+```
+POST /vendors              → bank lookup → virtual account creation → saved to DB
+GET  /vendors              → list vendors for logged-in admin
+GET  /vendors/:ref/balance → sums successful transactions for that vendor
+POST /vendors/:ref/settle  → bank lookup → Nomba transfer → payout record created
+```
+
+## Checkout Flow
+
+```
+POST /checkout/initiate         → creates Nomba hosted checkout order for a vendor
+GET  /checkout/:orderReference  → checks local + live order status
+GET  /checkout/callback         → customer return URL (does NOT mark paid)
+```
+
+Orders are only marked paid via a verified `payment_success` webhook — never from the callback redirect alone.
+
+---
+
+## Security
+
+- Refresh tokens stored hashed (bcrypt), never in plaintext
+- Access tokens (15 min) and refresh tokens (30 days) signed separately — a stolen refresh token cannot authenticate against protected routes (enforced in `JwtStrategy.validate()`)
+- Login rate-limited (5 attempts per 15 minutes per email) via Redis
+- All webhooks verified via HMAC-SHA256 field-concatenation before any payload is parsed
+- Webhook events deduplicated by `requestId` (Redis + DB) to prevent double-crediting on Nomba retries
+- Every transfer resolves and confirms recipient name via `/transfers/bank/lookup` before sending
+- CORS restricted to known frontend origins via `ALLOWED_ORIGINS`
+- Secrets loaded from environment variables only — never committed to source
+
+---
 
 ## Setup
 
-1. Clone and install:
-   ```bash
-   npm install
-   ```
+```bash
+# 1. Install dependencies
+npm install
 
-2. Copy environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-   Generate strong secrets with:
-   ```bash
-   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-   ```
+# 2. Copy and fill environment variables
+cp .env.example .env
 
-3. Run database migrations:
-   ```bash
-   npx prisma migrate dev
-   npx prisma generate
-   ```
+# 3. Generate strong secrets
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
-4. Start the server:
-   ```bash
-   npm run start:dev
-   ```
+# 4. Run database migrations
+npx prisma migrate dev
+npx prisma generate
 
-5. Open Swagger docs: `http://localhost:3000/api/docs`
+# 5. Start dev server
+npm run start:dev
+
+# 6. Open Swagger docs
+open http://localhost:3000/api/docs
+```
+
+---
 
 ## Environment Variables
 
@@ -193,57 +389,22 @@ consumers.
 | JWT | `JWT_SECRET`, `JWT_EXPIRES_IN` |
 | Resend | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` |
 | Checkout | `CHECKOUT_CALLBACK_URL` |
-| CORS | `ALLOWED_ORIGINS` (comma-separated; falls back to open CORS with a warning if unset) |
 
-Secrets are loaded from environment variables only — never committed to
-source. `.env` is gitignored.
-
-## API Overview
-
-| Module | Endpoints | Auth required |
-|---|---|---|
-| Auth | register, verify-otp, login, refresh, logout, forgot/reset password | No (except logout) |
-| Vendors | create, list, balance, settle | Yes (JWT) |
-| Checkout | initiate, status, callback | No (customer-facing) |
-| Webhooks | Nomba event receiver | HMAC signature, not JWT |
-| Transactions | list, get one, reconcile, bank-codes | Yes (JWT) |
-| Health | service status check | No |
-
-Full interactive documentation with request/response schemas is in Swagger.
-
-## Security Notes
-
-- Refresh tokens stored hashed (bcrypt), never in plaintext
-- Access tokens (15 min) and refresh tokens (30 days) signed separately; a
-  stolen refresh token cannot authenticate against protected routes
-- Login rate-limited (5 attempts per 15 minutes per email) via Redis
-- All webhooks verified via HMAC-SHA256 before any payload is parsed
-- Webhook events deduplicated by `requestId` to prevent double-crediting
-- Every transfer resolves and confirms the recipient's name before sending,
-  per Nomba's documented safety guidance
-- CORS restricted to known frontend origins via `ALLOWED_ORIGINS`
-- All amounts stored as `BigInt` in the database to prevent integer overflow
-  at scale, with explicit conversion at every API response boundary
+---
 
 ## Known Limitations
 
-**Nomba's Sub-Account creation API is deprecated.** VendHub does not call it.
-Sub-account provisioning happens via the Nomba dashboard; VendHub uses the
-sub-account ID issued at onboarding and tracks per-vendor balances in its own
-ledger instead.
+**Nomba's Sub-Account creation API is deprecated.** VendHub does not call it. Sub-account provisioning happens via the Nomba dashboard; VendHub uses the sub-account ID issued at hackathon onboarding and tracks per-vendor balances in its own Postgres ledger.
 
-**Settlement requires a funded Nomba wallet balance.** Wallet funding occurs
-automatically when a customer completes a real payment through Checkout or a
-Virtual Account — there is no separate manual top-up endpoint. A settlement
-attempted before any inbound payment has been received will correctly fail
-with `INSUFFICIENT_BALANCE`, which VendHub surfaces as a clear error message
-rather than a generic failure.
+**Sandbox virtual account limit.** Nomba sandbox previously enforced a hard limit of 2 virtual accounts per account holder — this limit has since been raised by the Nomba team for hackathon participants. Vendor creation and virtual account provisioning are fully functional in the sandbox environment.
+
+**Settlement requires a funded Nomba wallet.** A settlement attempted before any inbound payment has been received correctly fails with `INSUFFICIENT_BALANCE`, surfaced as a clear error message.
+
+---
 
 ## What's Next
 
 - Real end-to-end webhook delivery confirmation from a live customer payment
 - Tokenized card recurring charges (not required for this track)
 - CI/CD via GitHub Actions
-- Switch credentials to live values post-KYB — environment variables only,
-  no code changes required
-  
+- Switch credentials to live values post-KYB — environment variables only, no code changes required
